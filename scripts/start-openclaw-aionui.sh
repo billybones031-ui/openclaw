@@ -16,13 +16,25 @@ LOG="$HOME/openclaw-aionui.log"
 PID_FILE="$HOME/.openclaw-aionui.pid"
 PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 
-# Kill any existing managed instance.
+# Kill any existing managed instance, but only if the PID still points at a
+# gateway process. PIDs get reused after the previous gateway exits, so blindly
+# killing whatever is in the pidfile can take out an unrelated process.
 if [[ -f "$PID_FILE" ]]; then
-  OLD_PID="$(cat "$PID_FILE")"
-  if kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "Stopping existing OpenClaw Gateway (PID $OLD_PID)…"
-    kill "$OLD_PID" 2>/dev/null || true
-    sleep 1
+  OLD_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [[ -n "${OLD_PID:-}" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+    OLD_CMD="$(ps -p "$OLD_PID" -o args= 2>/dev/null || true)"
+    if [[ "$OLD_CMD" == *"openclaw"*"gateway"* ]]; then
+      echo "Stopping existing OpenClaw Gateway (PID $OLD_PID)…"
+      kill "$OLD_PID" 2>/dev/null || true
+      # Wait up to 5s for graceful exit, then SIGKILL.
+      for _ in 1 2 3 4 5; do
+        kill -0 "$OLD_PID" 2>/dev/null || break
+        sleep 1
+      done
+      kill -0 "$OLD_PID" 2>/dev/null && kill -9 "$OLD_PID" 2>/dev/null || true
+    else
+      echo "Stale pidfile — PID $OLD_PID is not an openclaw gateway, skipping kill."
+    fi
   fi
   rm -f "$PID_FILE"
 fi
@@ -31,10 +43,17 @@ fi
 cd "$REPO_ROOT"
 pnpm openclaw gateway --bind lan >> "$LOG" 2>&1 &
 NEW_PID=$!
-echo "$NEW_PID" > "$PID_FILE"
 
-# Give the server a moment to bind before printing URLs.
-sleep 0.5
+# Give the server a moment to bind, then verify it is still alive before
+# persisting the pidfile and printing success — startup can fail fast on port
+# conflicts or config errors, which would otherwise produce a false success.
+sleep 1
+if ! kill -0 "$NEW_PID" 2>/dev/null; then
+  echo "❌ OpenClaw Gateway failed to start. Last log lines:" >&2
+  tail -n 30 "$LOG" >&2 || true
+  exit 1
+fi
+echo "$NEW_PID" > "$PID_FILE"
 
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || echo "unknown")"
 TAILSCALE_IP="$(tailscale ip -4 2>/dev/null || echo "not-connected")"
