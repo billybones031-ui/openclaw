@@ -27,7 +27,8 @@ echo ""
 
 # ── TEST 1: Gateway health ────────────────────────────────────────────────────
 echo "TEST 1 — Gateway health"
-HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/health" 2>/dev/null || echo "000")"
+HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "${BASE}/health" 2>/dev/null || true)"
+HTTP_CODE="${HTTP_CODE:-000}"
 if [[ "$HTTP_CODE" == "200" ]]; then
   pass "GET /health → HTTP ${HTTP_CODE}"
 else
@@ -35,12 +36,12 @@ else
 fi
 
 # ── TEST 2: Process running ───────────────────────────────────────────────────
-echo "TEST 2 — OpenClaw process"
-if pgrep -f "openclaw" > /dev/null 2>&1; then
-  PID="$(pgrep -f "openclaw" | head -1)"
-  pass "openclaw running (PID ${PID})"
+echo "TEST 2 — OpenClaw gateway process"
+if pgrep -f "openclaw gateway" > /dev/null 2>&1; then
+  PID="$(pgrep -f "openclaw gateway" | head -1)"
+  pass "openclaw gateway running (PID ${PID})"
 else
-  fail "openclaw not found in process list"
+  fail "openclaw gateway not running — start with: scripts/start-openclaw-aionui.sh"
 fi
 
 # ── TEST 3: Agent discovery endpoint ─────────────────────────────────────────
@@ -68,7 +69,8 @@ TS_IP="$(tailscale ip -4 2>/dev/null || echo "")"
 if [[ -z "$TS_IP" ]]; then
   fail "Skipped — Tailscale IP unavailable"
 else
-  TS_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://${TS_IP}:${PORT}/health" 2>/dev/null || echo "000")"
+  TS_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://${TS_IP}:${PORT}/health" 2>/dev/null || true)"
+  TS_CODE="${TS_CODE:-000}"
   if [[ "$TS_CODE" == "200" ]]; then
     pass "http://${TS_IP}:${PORT}/health → HTTP ${TS_CODE}"
   else
@@ -120,7 +122,8 @@ echo "=============================================="
 echo ""
 
 # ── Deployment report ─────────────────────────────────────────────────────────
-OPENCLAW_VER="$(pnpm openclaw --version 2>/dev/null || echo "unknown")"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+OPENCLAW_VER="$(node -e "console.log(require('${REPO_ROOT}/package.json').version)" 2>/dev/null || echo "unknown")"
 TS_IP_REPORT="$(tailscale ip -4 2>/dev/null || echo "NOT CONNECTED")"
 NODE_VER="$(node --version 2>/dev/null || echo "unknown")"
 PYTHON_VER="$(python3 --version 2>/dev/null || echo "unknown")"
@@ -152,7 +155,7 @@ Discovery:    ${BASE}/.well-known/openclaw-gateway
 Tailscale:    http://${TS_IP_REPORT}:${PORT}
 
 PROCESS:
-$(pgrep -a openclaw 2>/dev/null || echo "not running")
+$(pgrep -af "openclaw gateway" 2>/dev/null || echo "not running")
 
 DISK:
 $(df -h ~ 2>/dev/null | tail -1 || echo "unknown")
