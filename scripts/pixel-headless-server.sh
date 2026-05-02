@@ -111,8 +111,8 @@ if $SYSTEMD_USER_OK; then
   systemctl --user daemon-reload
 else
   echo -e "   ${YELLOW}warning${NC}  systemd --user unavailable; services won't auto-start — start manually with:"
-  echo "     ${OPENCLAW_BIN} gateway --bind lan &"
-  [[ -n "${AIONUI_BIN:-}" ]] && echo "     ${AIONUI_BIN} --no-sandbox &"
+  echo "     OPENCLAW_GATEWAY_PORT=${OPENCLAW_PORT} ${OPENCLAW_BIN} gateway --bind lan --port ${OPENCLAW_PORT} &"
+  [[ -n "${AIONUI_BIN:-}" ]] && echo "     AIONUI_HOST=0.0.0.0 AIONUI_PORT=${AIONUI_PORT} ${AIONUI_BIN} --no-sandbox &"
 fi
 
 $SYSTEMD_USER_OK && systemctl --user enable openclaw-gateway.service 2>/dev/null && \
