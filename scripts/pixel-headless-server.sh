@@ -59,7 +59,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${OPENCLAW_BIN} gateway --bind lan
+ExecStart=${OPENCLAW_BIN} gateway --bind lan --port ${OPENCLAW_PORT}
 Restart=on-failure
 RestartSec=5
 Environment=OPENCLAW_GATEWAY_PORT=${OPENCLAW_PORT}
@@ -75,6 +75,7 @@ echo -e "   ${GREEN}written${NC}  openclaw-gateway.service (port ${OPENCLAW_PORT
 # AionUi service — detect binary
 AIONUI_BIN="$(command -v AionUi 2>/dev/null || command -v aionui 2>/dev/null || echo "")"
 if [[ -n "$AIONUI_BIN" ]]; then
+  mkdir -p "$HOME/.config/AionUi/logs"
   cat > "$SYSTEMD_USER_DIR/aionui.service" << EOF
 [Unit]
 Description=AionUi

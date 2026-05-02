@@ -25,6 +25,7 @@ AIONUI_PORT="${AIONUI_PORT:-25808}"
 OPENCODE_PORT="${OPENCODE_PORT:-8080}"
 SSH_CONFIG="$HOME/.ssh/config"
 TUNNEL_PID_FILE="$HOME/.pixel-isl-tunnel.pid"
+TUNNEL_SOCK="$HOME/.ssh/pixel-isl-tunnel.sock"
 
 if [[ -z "$PIXEL_IP" ]]; then
   echo "Usage: $0 <pixel-tailscale-ip>"
@@ -37,15 +38,23 @@ echo -e "${BOLD}=== Connecting to Pixel ISL (${PIXEL_IP}) ===${NC}"
 echo ""
 
 # ── Kill existing tunnel if any ───────────────────────────────────────────────
-# Unconditionally kill whatever PID is in the pidfile — this file is managed
-# solely by this script, so any live process recorded here is our tunnel
-# regardless of which Tailscale IP it was originally connecting to.
+# Primary: use the ControlMaster socket — precise, no PID guessing.
+# Fallback: use PID file, but verify the process is actually an SSH tunnel
+# (argv contains "ssh") before killing to avoid hitting a reused PID.
+if [[ -S "$TUNNEL_SOCK" ]]; then
+  echo "Closing existing tunnel (via control socket)…"
+  ssh -S "$TUNNEL_SOCK" -O exit "${PIXEL_USER}@${PIXEL_IP}" 2>/dev/null || true
+  rm -f "$TUNNEL_SOCK"
+fi
 if [[ -f "$TUNNEL_PID_FILE" ]]; then
   OLD_PID="$(cat "$TUNNEL_PID_FILE" 2>/dev/null || true)"
   if [[ -n "${OLD_PID:-}" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "Closing existing tunnel (PID $OLD_PID)…"
-    kill "$OLD_PID" 2>/dev/null || true
-    sleep 1
+    OLD_CMD="$(ps -p "$OLD_PID" -o args= 2>/dev/null || true)"
+    if [[ "$OLD_CMD" == *"ssh"* ]]; then
+      echo "Closing existing tunnel (PID $OLD_PID)…"
+      kill "$OLD_PID" 2>/dev/null || true
+      sleep 1
+    fi
   fi
   rm -f "$TUNNEL_PID_FILE"
 fi
@@ -83,8 +92,11 @@ else
 fi
 
 # ── Open tunnel ───────────────────────────────────────────────────────────────
+# Use ControlMaster (-M -S) so the socket is the precise teardown handle.
+# Run in background with & so $! captures the real PID without relying on pgrep.
 echo "  Opening SSH tunnel…"
-ssh -f -N \
+ssh -N \
+  -M -S "$TUNNEL_SOCK" \
   -L "${OPENCLAW_PORT}:localhost:${OPENCLAW_PORT}" \
   -L "${AIONUI_PORT}:localhost:${AIONUI_PORT}" \
   -L "${OPENCODE_PORT}:localhost:${OPENCODE_PORT}" \
@@ -92,18 +104,23 @@ ssh -f -N \
   -o ServerAliveInterval=30 \
   -o ServerAliveCountMax=3 \
   -o ExitOnForwardFailure=yes \
-  "${PIXEL_USER}@${PIXEL_IP}" && echo "" || {
-    echo ""
-    echo "  SSH tunnel failed. Troubleshooting:"
-    echo "    1. Confirm Tailscale is up on both machines: tailscale status"
-    echo "    2. Confirm SSH server is running on Pixel: pgrep sshd"
-    echo "    3. Try manually: ssh ${PIXEL_USER}@${PIXEL_IP}"
-    exit 1
-  }
+  "${PIXEL_USER}@${PIXEL_IP}" &
+TUNNEL_PID=$!
+echo "$TUNNEL_PID" > "$TUNNEL_PID_FILE"
 
-# Capture the SSH tunnel PID
-TUNNEL_PID="$(pgrep -n -f "ssh.*${PIXEL_IP}" 2>/dev/null || echo "")"
-[[ -n "$TUNNEL_PID" ]] && echo "$TUNNEL_PID" > "$TUNNEL_PID_FILE"
+# Brief wait then verify the process is still alive (catches immediate failures
+# like ExitOnForwardFailure or bad host key).
+sleep 1
+if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+  rm -f "$TUNNEL_PID_FILE" "$TUNNEL_SOCK"
+  echo ""
+  echo "  SSH tunnel failed. Troubleshooting:"
+  echo "    1. Confirm Tailscale is up on both machines: tailscale status"
+  echo "    2. Confirm SSH server is running on Pixel: pgrep sshd"
+  echo "    3. Try manually: ssh ${PIXEL_USER}@${PIXEL_IP}"
+  exit 1
+fi
+echo ""
 
 # ── Verify tunnel ─────────────────────────────────────────────────────────────
 sleep 1
@@ -134,5 +151,5 @@ elif command -v open > /dev/null 2>&1; then
   open "http://localhost:${AIONUI_PORT}" 2>/dev/null &
 fi
 
-echo -e "  To close tunnel: kill \$(cat ~/.pixel-isl-tunnel.pid)"
+echo -e "  To close tunnel: ssh -S ~/.ssh/pixel-isl-tunnel.sock -O exit ${PIXEL_USER}@${PIXEL_IP}"
 echo ""
