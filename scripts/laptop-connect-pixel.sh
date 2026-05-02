@@ -37,15 +37,15 @@ echo -e "${BOLD}=== Connecting to Pixel ISL (${PIXEL_IP}) ===${NC}"
 echo ""
 
 # ── Kill existing tunnel if any ───────────────────────────────────────────────
+# Unconditionally kill whatever PID is in the pidfile — this file is managed
+# solely by this script, so any live process recorded here is our tunnel
+# regardless of which Tailscale IP it was originally connecting to.
 if [[ -f "$TUNNEL_PID_FILE" ]]; then
   OLD_PID="$(cat "$TUNNEL_PID_FILE" 2>/dev/null || true)"
   if [[ -n "${OLD_PID:-}" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
-    OLD_CMD="$(ps -p "$OLD_PID" -o args= 2>/dev/null || true)"
-    if [[ "$OLD_CMD" == *"pixel-isl"* ]] || [[ "$OLD_CMD" == *"${PIXEL_IP}"* ]]; then
-      echo "Closing existing tunnel (PID $OLD_PID)…"
-      kill "$OLD_PID" 2>/dev/null || true
-      sleep 1
-    fi
+    echo "Closing existing tunnel (PID $OLD_PID)…"
+    kill "$OLD_PID" 2>/dev/null || true
+    sleep 1
   fi
   rm -f "$TUNNEL_PID_FILE"
 fi
@@ -54,7 +54,7 @@ fi
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 
-if ! grep -q "Host pixel-isl" "$SSH_CONFIG" 2>/dev/null; then
+if ! grep -qE '^[[:space:]]*Host[[:space:]]+pixel-isl([[:space:]]|$)' "$SSH_CONFIG" 2>/dev/null; then
   cat >> "$SSH_CONFIG" << SSHEOF
 
 # ISL Nexus Terminal — Pixel headless server
@@ -70,8 +70,15 @@ Host pixel-isl
 SSHEOF
   echo -e "  ${GREEN}written${NC}  ~/.ssh/config → Host pixel-isl"
 else
-  # Update HostName in case IP changed
-  sed -i "s/^  HostName .*/  HostName ${PIXEL_IP}/" "$SSH_CONFIG" 2>/dev/null || true
+  # Update HostName inside the pixel-isl block only — awk tracks which block
+  # we're in so other SSH host entries are never touched.
+  tmp_cfg="$(mktemp)"
+  awk -v ip="${PIXEL_IP}" '
+    BEGIN { in_block=0 }
+    /^[[:space:]]*Host[[:space:]]+/ { in_block=($2=="pixel-isl") }
+    in_block && /^[[:space:]]*HostName[[:space:]]+/ { $0="  HostName " ip }
+    { print }
+  ' "$SSH_CONFIG" > "$tmp_cfg" && mv "$tmp_cfg" "$SSH_CONFIG"
   echo -e "  ${GREEN}updated${NC}  ~/.ssh/config pixel-isl → ${PIXEL_IP}"
 fi
 

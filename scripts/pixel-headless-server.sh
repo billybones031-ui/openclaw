@@ -101,11 +101,22 @@ fi
 
 # ── 3. Reload + enable ────────────────────────────────────────────────────────
 echo "3. Enabling services"
-systemctl --user daemon-reload
+SYSTEMD_USER_OK=false
+if command -v systemctl > /dev/null 2>&1 && systemctl --user --no-pager show > /dev/null 2>&1; then
+  SYSTEMD_USER_OK=true
+fi
 
-systemctl --user enable openclaw-gateway.service 2>/dev/null && \
+if $SYSTEMD_USER_OK; then
+  systemctl --user daemon-reload
+else
+  echo -e "   ${YELLOW}warning${NC}  systemd --user unavailable; services won't auto-start — start manually with:"
+  echo "     ${OPENCLAW_BIN} gateway --bind lan &"
+  [[ -n "${AIONUI_BIN:-}" ]] && echo "     ${AIONUI_BIN} --no-sandbox &"
+fi
+
+$SYSTEMD_USER_OK && systemctl --user enable openclaw-gateway.service 2>/dev/null && \
   echo -e "   ${GREEN}enabled${NC}  openclaw-gateway" || \
-  echo -e "   ${YELLOW}warning${NC}  could not enable openclaw-gateway (systemd --user may not be available)"
+  { $SYSTEMD_USER_OK && echo -e "   ${YELLOW}warning${NC}  could not enable openclaw-gateway"; }
 
 if [[ -f "$SYSTEMD_USER_DIR/aionui.service" ]]; then
   systemctl --user enable aionui.service 2>/dev/null && \
