@@ -50,7 +50,7 @@ if [[ -f "$TUNNEL_PID_FILE" ]]; then
   OLD_PID="$(cat "$TUNNEL_PID_FILE" 2>/dev/null || true)"
   if [[ -n "${OLD_PID:-}" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
     OLD_CMD="$(ps -p "$OLD_PID" -o args= 2>/dev/null || true)"
-    if [[ "$OLD_CMD" == *"ssh"* ]]; then
+    if [[ "$OLD_CMD" == *"ssh"* && "$OLD_CMD" == *"${PIXEL_USER}@${PIXEL_IP}"* ]]; then
       echo "Closing existing tunnel (PID $OLD_PID)…"
       kill "$OLD_PID" 2>/dev/null || true
       sleep 1

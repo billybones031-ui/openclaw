@@ -181,7 +181,7 @@ To run the Postbox loop from the guide:
 1. In AionUi, create a new **Team**
 2. Set **Gemini** as Leader
 3. Add **Claude Code** as Teammate
-4. Send task: `"Review ~/soundforge-clearwave and list 3 improvements"`
+4. Send task: `"Review ~/your-project and list 3 improvements"`
 
 Both agents receive the task, respond independently, and AionUi merges the results.
 

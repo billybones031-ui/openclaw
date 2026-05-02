@@ -115,13 +115,20 @@ else
   [[ -n "${AIONUI_BIN:-}" ]] && echo "     AIONUI_HOST=0.0.0.0 AIONUI_PORT=${AIONUI_PORT} ${AIONUI_BIN} --no-sandbox &"
 fi
 
-$SYSTEMD_USER_OK && systemctl --user enable openclaw-gateway.service 2>/dev/null && \
-  echo -e "   ${GREEN}enabled${NC}  openclaw-gateway" || \
-  { $SYSTEMD_USER_OK && echo -e "   ${YELLOW}warning${NC}  could not enable openclaw-gateway"; }
+if $SYSTEMD_USER_OK; then
+  if systemctl --user enable openclaw-gateway.service 2>/dev/null; then
+    echo -e "   ${GREEN}enabled${NC}  openclaw-gateway"
+  else
+    echo -e "   ${YELLOW}warning${NC}  could not enable openclaw-gateway"
+  fi
+fi
 
-if [[ -f "$SYSTEMD_USER_DIR/aionui.service" ]]; then
-  systemctl --user enable aionui.service 2>/dev/null && \
-    echo -e "   ${GREEN}enabled${NC}  aionui" || true
+if [[ -f "$SYSTEMD_USER_DIR/aionui.service" ]] && $SYSTEMD_USER_OK; then
+  if systemctl --user enable aionui.service 2>/dev/null; then
+    echo -e "   ${GREEN}enabled${NC}  aionui"
+  else
+    echo -e "   ${YELLOW}warning${NC}  could not enable aionui"
+  fi
 fi
 
 # ── 4. Enable lingering (survive logout) ──────────────────────────────────────
