@@ -6,7 +6,7 @@ agent discovery endpoint.
 
 ---
 
-## Phase 1 — Network access
+## Phase 1: Network access
 
 ### 1.1 Start AionUi bound to all interfaces
 
@@ -52,7 +52,7 @@ From another device (Chromebook, phone), access both services via Tailscale:
 
 ---
 
-## Phase 2 — AionUi first login
+## Phase 2: AionUi first login
 
 ```
 URL:      http://localhost:25808
@@ -64,7 +64,7 @@ Add your API keys under **Settings → Models → Add Provider**.
 
 ---
 
-## Phase 3 — Agent configuration
+## Phase 3: Agent configuration
 
 ### 3.1 Auto-detected agents
 
@@ -127,7 +127,7 @@ configuration to all connected agents automatically.
 
 ---
 
-## Phase 4 — Persistence
+## Phase 4: Persistence
 
 The `scripts/start-openclaw-aionui.sh` script manages a PID file at
 `~/.openclaw-aionui.pid` and logs to `~/openclaw-aionui.log`. Re-running it after an AVF
@@ -136,16 +136,16 @@ restart cleanly replaces any stale process.
 For Chromebook SSH access, add to `~/.ssh/config`:
 
 ```
-Host avf
-  HostName 10.x.x.x
-  User droid
+Host gateway-host
+  HostName <gateway-ip>
+  User <username>
   ServerAliveInterval 30
   ServerAliveCountMax 3
 ```
 
 ---
 
-## Phase 5 — Verification
+## Phase 5: Verification
 
 Run the full 8-test verification suite:
 
