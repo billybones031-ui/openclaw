@@ -7,12 +7,11 @@ export const AGENT_DISCOVERY_PATH = "/.well-known/openclaw-gateway";
  * Handles GET /.well-known/openclaw-gateway — unauthenticated agent capabilities manifest.
  * Returns false if the request path doesn't match, allowing the caller to continue routing.
  */
-export function handleAgentDiscoveryRequest(
-  req: IncomingMessage,
-  res: ServerResponse,
-): boolean {
+export function handleAgentDiscoveryRequest(req: IncomingMessage, res: ServerResponse): boolean {
   const url = new URL(req.url ?? "/", "http://localhost");
-  if (url.pathname !== AGENT_DISCOVERY_PATH) return false;
+  if (url.pathname !== AGENT_DISCOVERY_PATH) {
+    return false;
+  }
 
   const method = (req.method ?? "GET").toUpperCase();
   if (method !== "GET" && method !== "HEAD") {

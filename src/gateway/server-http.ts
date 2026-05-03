@@ -34,6 +34,7 @@ import type { ControlUiRootState } from "./control-ui.js";
 import type { AuthorizedGatewayHttpRequest } from "./http-auth-utils.js";
 import { sendGatewayAuthFailure, setDefaultSecurityHeaders } from "./http-common.js";
 import { resolveRequestClientIp } from "./net.js";
+import { AGENT_DISCOVERY_PATH, handleAgentDiscoveryRequest } from "./server-agent-discovery.js";
 import type { HooksRequestHandler } from "./server/hooks-request-handler.js";
 import {
   isProtectedPluginRoutePathFromContext,
@@ -43,10 +44,6 @@ import {
 import type { PreauthConnectionBudget } from "./server/preauth-connection-budget.js";
 import type { ReadinessChecker } from "./server/readiness.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
-import {
-  AGENT_DISCOVERY_PATH,
-  handleAgentDiscoveryRequest,
-} from "./server-agent-discovery.js";
 import { VOICECLAW_REALTIME_PATH } from "./voiceclaw-realtime/paths.js";
 
 type PluginHttpRequestHandler = (
