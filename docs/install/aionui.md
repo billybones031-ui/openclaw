@@ -44,10 +44,10 @@ tailscale ip -4   # save this — format 100.x.x.x
 
 From another device (Chromebook, phone), access both services via Tailscale:
 
-| Service | URL |
-|---------|-----|
-| AionUi | `http://<tailscale-ip>:25808` |
-| OpenClaw Gateway | `http://<tailscale-ip>:18789` |
+| Service            | URL                                                        |
+| ------------------ | ---------------------------------------------------------- |
+| AionUi             | `http://<tailscale-ip>:25808`                              |
+| OpenClaw Gateway   | `http://<tailscale-ip>:18789`                              |
 | OpenClaw discovery | `http://<tailscale-ip>:18789/.well-known/openclaw-gateway` |
 
 ---
@@ -155,16 +155,16 @@ Run the full 8-test verification suite:
 
 Tests covered:
 
-| # | Test | Pass condition |
-|---|------|----------------|
-| 1 | Gateway health | `GET /health` → HTTP 200 |
-| 2 | Process running | `pgrep openclaw` returns PID |
-| 3 | Agent discovery | `/.well-known/openclaw-gateway` returns JSON manifest |
-| 4 | Tailscale | `tailscale status` succeeds |
-| 5 | Cross-device access | Tailscale IP health check → HTTP 200 |
-| 6 | Claude Code CLI | `claude --version` returns version |
-| 7 | Gemini CLI | `gemini --version` returns version |
-| 8 | Multi-agent readiness | `claude` + `gemini` + openclaw-gateway all available |
+| #   | Test                  | Pass condition                                        |
+| --- | --------------------- | ----------------------------------------------------- |
+| 1   | Gateway health        | `GET /health` → HTTP 200                              |
+| 2   | Process running       | `pgrep openclaw` returns PID                          |
+| 3   | Agent discovery       | `/.well-known/openclaw-gateway` returns JSON manifest |
+| 4   | Tailscale             | `tailscale status` succeeds                           |
+| 5   | Cross-device access   | Tailscale IP health check → HTTP 200                  |
+| 6   | Claude Code CLI       | `claude --version` returns version                    |
+| 7   | Gemini CLI            | `gemini --version` returns version                    |
+| 8   | Multi-agent readiness | `claude` + `gemini` + openclaw-gateway all available  |
 
 The script exits with the number of failed tests (0 = all pass) and prints a full
 deployment report.
@@ -193,13 +193,16 @@ reachable).
 ## Troubleshooting
 
 **Gateway not detected by AionUi**
+
 - Confirm `openclaw` is on `$PATH`: `which openclaw`
 - Confirm gateway is running in LAN mode: `curl http://localhost:18789/.well-known/openclaw-gateway`
 
 **Cross-device access fails (Test 5)**
+
 - Gateway must be started with `--bind lan`. Use `scripts/start-openclaw-aionui.sh`.
 - Tailscale must be running on both devices.
 
 **Tailscale IP unreachable**
+
 - Run `sudo tailscale up --accept-routes` on the AVF side.
 - Confirm both devices appear in `tailscale status`.
