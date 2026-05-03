@@ -80,28 +80,28 @@ fi
 
 # ── TEST 6: Claude Code CLI ───────────────────────────────────────────────────
 echo "TEST 6 — Claude Code CLI"
+CLAUDE_OK=false
 if CLAUDE_VER="$(claude --version 2>/dev/null)"; then
   pass "claude --version → ${CLAUDE_VER}"
+  CLAUDE_OK=true
 else
   fail "claude not found — run: npm install -g @anthropic-ai/claude-code"
 fi
 
 # ── TEST 7: Gemini CLI ────────────────────────────────────────────────────────
 echo "TEST 7 — Gemini CLI"
+GEMINI_OK=false
 if GEMINI_VER="$(gemini --version 2>/dev/null)"; then
   pass "gemini --version → ${GEMINI_VER}"
+  GEMINI_OK=true
 else
   fail "gemini not found — run: npm install -g @google/gemini-cli && gemini auth login"
 fi
 
 # ── TEST 8: Multi-agent readiness (Postbox loop prerequisites) ────────────────
 echo "TEST 8 — Multi-agent readiness (Postbox loop)"
-CLAUDE_OK=false
-GEMINI_OK=false
 OPENCLAW_OK=false
-command -v claude > /dev/null 2>&1  && CLAUDE_OK=true
-command -v gemini > /dev/null 2>&1  && GEMINI_OK=true
-[[ "$HTTP_CODE" == "200" ]]         && OPENCLAW_OK=true
+[[ "$HTTP_CODE" == "200" ]] && OPENCLAW_OK=true
 
 if $CLAUDE_OK && $GEMINI_OK && $OPENCLAW_OK; then
   pass "claude ✓  gemini ✓  openclaw-gateway ✓ — ready for AionUi Team mode"
