@@ -34,6 +34,7 @@ import type { ControlUiRootState } from "./control-ui.js";
 import type { AuthorizedGatewayHttpRequest } from "./http-auth-utils.js";
 import { sendGatewayAuthFailure, setDefaultSecurityHeaders } from "./http-common.js";
 import { resolveRequestClientIp } from "./net.js";
+import { AGENT_DISCOVERY_PATH, handleAgentDiscoveryRequest } from "./server-agent-discovery.js";
 import type { HooksRequestHandler } from "./server/hooks-request-handler.js";
 import {
   isProtectedPluginRoutePathFromContext,
@@ -546,6 +547,11 @@ export function createGatewayHttpServer(opts: {
           false,
           getReadiness,
         );
+        return;
+      }
+
+      if (requestPath === AGENT_DISCOVERY_PATH) {
+        handleAgentDiscoveryRequest(req, res);
         return;
       }
 
