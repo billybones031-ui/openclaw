@@ -1037,7 +1037,7 @@
               },
               {
                 "group": "Advanced setup",
-                "pages": ["start/setup", "pi-dev"]
+                "pages": ["start/setup", "pi-dev", "install/aionui"]
               }
             ]
           },
