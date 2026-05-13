@@ -6,7 +6,14 @@
 #   ./scripts/verify-aionui-setup.sh
 set -uo pipefail
 
-PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
+# Resolve port: OPENCLAW_GATEWAY_PORT env var → gateway.port in config → 18789.
+# Mirrors resolveGatewayPort() in src/config/paths.ts so tests probe the right endpoint.
+_OPENCLAW_CFG="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/openclaw.json"
+_CFG_PORT=""
+if [[ -f "$_OPENCLAW_CFG" ]]; then
+  _CFG_PORT="$(node -e "try{const c=JSON.parse(require('fs').readFileSync('${_OPENCLAW_CFG}','utf8'));process.stdout.write(String(c?.gateway?.port||''))}catch(_){}" 2>/dev/null || true)"
+fi
+PORT="${OPENCLAW_GATEWAY_PORT:-${_CFG_PORT:-18789}}"
 BASE="http://localhost:${PORT}"
 
 PASS=0

@@ -14,7 +14,16 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG="$HOME/openclaw-aionui.log"
 PID_FILE="$HOME/.openclaw-aionui.pid"
-PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
+
+# Resolve port: OPENCLAW_GATEWAY_PORT env var → gateway.port in config → 18789.
+# This mirrors resolveGatewayPort() in src/config/paths.ts so printed URLs match
+# the port the process actually binds to.
+_OPENCLAW_CFG="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/openclaw.json"
+_CFG_PORT=""
+if [[ -f "$_OPENCLAW_CFG" ]]; then
+  _CFG_PORT="$(node -e "try{const c=JSON.parse(require('fs').readFileSync('${_OPENCLAW_CFG}','utf8'));process.stdout.write(String(c?.gateway?.port||''))}catch(_){}" 2>/dev/null || true)"
+fi
+PORT="${OPENCLAW_GATEWAY_PORT:-${_CFG_PORT:-18789}}"
 
 # Kill any existing managed instance, but only if the PID still points at a
 # gateway process. PIDs get reused after the previous gateway exits, so blindly
@@ -41,7 +50,7 @@ fi
 
 # Start bound to all interfaces (--bind lan → 0.0.0.0).
 cd "$REPO_ROOT"
-pnpm openclaw gateway --bind lan >> "$LOG" 2>&1 &
+pnpm openclaw gateway --bind lan --port "${PORT}" >> "$LOG" 2>&1 &
 NEW_PID=$!
 
 # Give the server a moment to bind, then verify it is still alive before
